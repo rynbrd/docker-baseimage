@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 SYSLOGNG_OPTS=""
@@ -6,28 +6,52 @@ SYSLOGNG_OPTS=""
 [ -r /etc/default/syslog-ng ] && . /etc/default/syslog-ng
 
 case "x$CONSOLE_LOG_LEVEL" in
-  x[1-8])
-    dmesg -n $CONSOLE_LOG_LEVEL
-    ;;
-  x)
-    ;;
-  *)
-    echo "CONSOLE_LOG_LEVEL is of unaccepted value."
-    ;;
+x[1-8])
+	dmesg -n $CONSOLE_LOG_LEVEL
+	;;
+x)
+	;;
+*)
+	echo "CONSOLE_LOG_LEVEL is of unaccepted value."
+	;;
 esac
 
-if [ ! -e /dev/xconsole ]
-then
+if [ ! -e /dev/xconsole ]; then
   mknod -m 640 /dev/xconsole p
 fi
 
-if [ -n "$SYSLOG_DEST" ]; then
-    if [ "$SYSLOG_DEST" != "remote" ]; then
-        REMOTE_HOST="${SYSLOG_DEST%:*}"
-        REMOTE_PORT="${SYSLOG_DEST##*:}"
-    fi
-    echo "destination d_messages { udp(\"${REMOTE_HOST:-172.17.42.1}\" port(${REMOTE_PORT:-514})); };" > \
-        /etc/syslog-ng/destination.conf
+if [[ ! "$SYSLOG_REMOTE" =~ ^(enable|disable)$ ]]; then
+	REMOTE_HOST=${SYSLOG_DEST%:*}
+	REMOTE_PORT=${SYSLOG_DEST##*:}
+fi
+REMOTE_HOST=${REMOTE_HOST:-172.17.42.1}
+REMOTE_PORT=${REMOTE_PORT:-514}
+
+if [[ -n $SYSLOG_REMOTE && "$SYSLOG_REMOTE" != "disable" && "$SYSLOG_LOCAL" != "disable" ]]; then
+	cat > /etc/syslog-ng/destination.conf <<EOF
+destination d_messages {
+	file("/var/log/messages");
+	udp("${REMOTE_HOST}" port(${REMOTE_PORT}));
+};
+EOF
+elif [[ -n $SYSLOG_REMOTE && "$SYSLOG_REMOTE" != "disable" ]]; then
+	cat > /etc/syslog-ng/destination.conf <<EOF
+destination d_messages {
+	udp("${REMOTE_HOST}" port(${REMOTE_PORT}));
+};
+EOF
+elif [[ "$SYSLOG_LOCAL" != "disable" ]]; then
+	cat > /etc/syslog-ng/destination.conf <<EOF
+destination d_messages {
+	file("/var/log/messages");
+};
+EOF
+else
+	cat > /etc/syslog-ng/destination.conf <<EOF
+destination d_messages {
+	file("/dev/null" owner(root) group(root) perm(0666));
+};
+EOF
 fi
 
 exec syslog-ng -F -p /var/run/syslog-ng.pid $SYSLOGNG_OPTS
