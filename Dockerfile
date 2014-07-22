@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.9
+FROM phusion/baseimage:0.9.12
 MAINTAINER Ryan Bourgeois <bluedragonx@gmail.com>
 
 # set up the container environment
