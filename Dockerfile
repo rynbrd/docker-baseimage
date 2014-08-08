@@ -4,7 +4,6 @@ MAINTAINER Ryan Bourgeois <bluedragonx@gmail.com>
 # set up the container environment
 ENV HOME /root
 ENV DEBIAN_FRONTEND noninteractive
-ENTRYPOINT ["/sbin/my_init"]
 
 # we want an app user for running non-system things
 RUN groupadd -g 9999 app && useradd -u 9999 -g app -m app
